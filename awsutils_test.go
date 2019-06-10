@@ -44,3 +44,36 @@ func TestFindMissingParametresFail(t *testing.T) {
 		t.Errorf("Expected error: %s", expectedError)
 	}
 }
+
+func TestConvertToCfnParameter(t *testing.T) {
+
+	parameters := map[string]string{
+		"key1": "value1",
+		"key2": "value2",
+		"key3": "value3",
+		"key4": "value4",
+	}
+	cfnParam := convertToCfnParameter(parameters)
+
+	if len(parameters) != len(cfnParam) {
+		t.Errorf("Differnt number of parametres return ")
+	}
+}
+
+func TestConvertToRequiredCfnParameter(t *testing.T) {
+
+	requiredParam := map[string]*string{
+		"key1": nil,
+		"key2": nil,
+	}
+	parameters := map[string]string{
+		"key1": "value1",
+		"key2": "value2",
+		"key3": "value3",
+		"key4": "value4",
+	}
+	cfnParam := convertToRequiredCfnParameter(requiredParam, parameters)
+	if len(cfnParam) != 2 {
+		t.Errorf("Two required parameters expected")
+	}
+}
