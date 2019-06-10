@@ -26,13 +26,13 @@ type Stack struct {
 	TemplateURL  string
 	Capabilities []string
 	Status       *string
-	region       string
+	Region       string
 }
 
 //CreateOrUpdate... creates a stack or creates a change set for an existing stack based on given parameters
 func (s *Stack) CreateOrUpdate(parameters map[string]string) error {
 	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(s.region),
+		Region: aws.String(s.Region),
 	}))
 	cfn := cloudformation.New(sess)
 
@@ -99,7 +99,7 @@ func convertToRequiredCfnParameter(templateParam map[string]*string, parameters 
 func (s *Stack) ReadOutputs() (map[string]string, error) {
 	parameters := make(map[string]string)
 	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(s.region),
+		Region: aws.String(s.Region),
 	}))
 	cfn := cloudformation.New(sess)
 
@@ -189,7 +189,7 @@ func getAllStacksBy(region string) ([]Stack, error) {
 	results := make([]Stack, 0)
 
 	for _, summary := range resp.StackSummaries {
-		results = append(results, Stack{Name: *summary.StackName, Status: summary.StackStatus, region: region})
+		results = append(results, Stack{Name: *summary.StackName, Status: summary.StackStatus, Region: region})
 	}
 	return results, nil
 }
@@ -197,7 +197,7 @@ func getAllStacksBy(region string) ([]Stack, error) {
 //GetTeplateParameters ...
 func (s *Stack) GetTeplateParameters() (map[string]*string, error) {
 	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(s.region),
+		Region: aws.String(s.Region),
 	}))
 	cfn := cloudformation.New(sess)
 
@@ -222,7 +222,7 @@ func (s *Stack) getTeplateParameters(cfn *cloudformation.CloudFormation) (map[st
 func (s *Stack) CreateStack(parameters map[string]string) error {
 
 	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(s.region),
+		Region: aws.String(s.Region),
 	}))
 	cfn := cloudformation.New(sess)
 	cfnParameters := convertToCfnParameter(parameters)
@@ -261,7 +261,7 @@ func (s *Stack) createStack(cfn *cloudformation.CloudFormation, parameters []*cl
 //CreateChangeSet ...
 func (s *Stack) CreateChangeSet(parameters map[string]string) error {
 	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(s.region),
+		Region: aws.String(s.Region),
 	}))
 	cfn := cloudformation.New(sess)
 	cfnParameters := convertToCfnParameter(parameters)
