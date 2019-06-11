@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -29,7 +28,7 @@ type Stack struct {
 	Region       string
 }
 
-//CreateOrUpdate... creates a stack or creates a change set for an existing stack based on given parameters
+//CreateOrUpdate ... creates a stack or creates a change set for an existing stack based on given parameters
 func (s *Stack) CreateOrUpdate(parameters map[string]string) error {
 	sess := session.Must(session.NewSession(&aws.Config{
 		Region: aws.String(s.Region),
@@ -52,9 +51,9 @@ func (s *Stack) CreateOrUpdate(parameters map[string]string) error {
 	_, err = cfn.DescribeStacks(&input)
 
 	if err != nil {
-		s.createStack(cfn, cfnParameters)
+		err = s.createStack(cfn, cfnParameters)
 	} else {
-		s.createChangeSet(cfn, cfnParameters)
+		err = s.createChangeSet(cfn, cfnParameters)
 	}
 	return err
 }
@@ -153,7 +152,8 @@ func LoadEnvironmentVariables() (map[string]string, error) {
 	return parameters, nil
 }
 
-func getAllStacksBy(region string) ([]Stack, error) {
+//GetAllStacksBy ...
+func GetAllStacksBy(region string) ([]Stack, error) {
 	sess := session.Must(session.NewSession(&aws.Config{
 		Region: aws.String(region),
 	}))
@@ -300,7 +300,7 @@ func (s *Stack) createChangeSet(cfn *cloudformation.CloudFormation, parameters [
 }
 
 //DownloadBucket ...
-func DownloadBucket(baseDir, bucket, region, excludePatten string) {
+func DownloadBucket(baseDir, bucket, region, excludePatten string) error {
 	var wg sync.WaitGroup
 
 	sess := session.Must(session.NewSession(&aws.Config{
@@ -315,17 +315,7 @@ func DownloadBucket(baseDir, bucket, region, excludePatten string) {
 
 	result, err := s3Client.ListObjectsV2(input)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case s3.ErrCodeNoSuchBucket:
-				fmt.Println(s3.ErrCodeNoSuchBucket, aerr.Error())
-			default:
-				fmt.Println(aerr.Error())
-			}
-		} else {
-			fmt.Println(err.Error())
-		}
-		return
+		return err
 	}
 
 	for _, s3Obj := range result.Contents {
@@ -334,14 +324,14 @@ func DownloadBucket(baseDir, bucket, region, excludePatten string) {
 		if err != nil || matched {
 			continue
 		}
-
 		if err = mkDirIfNeeded(baseDir, *s3Obj.Key); err != nil {
-			return
+			continue
 		}
 		wg.Add(1)
 		go saveObject(bucket, baseDir, *s3Obj.Key, sess, &wg)
 	}
 	wg.Wait()
+	return nil
 }
 func saveObject(bucket, baseDir, key string, sess *session.Session, wg *sync.WaitGroup) {
 	downloader := s3manager.NewDownloader(sess)
@@ -362,7 +352,6 @@ func saveObject(bucket, baseDir, key string, sess *session.Session, wg *sync.Wai
 		log.Println("Unable to download item:" + err.Error())
 		return
 	}
-
 }
 func mkDirIfNeeded(baseDir string, key string) (err error) {
 	err = nil
