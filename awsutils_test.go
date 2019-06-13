@@ -53,9 +53,9 @@ func TestFindMissingParametresFail(t *testing.T) {
 	}
 	err := findMissingParametres(requiredParam, parameters)
 	message := err.Error()
-	expectedError := "[key3,key4]"
-	if !strings.Contains(message, expectedError) {
-		t.Errorf("Expected: %s, and got %s", expectedError, message)
+
+	if !strings.Contains(message, "key3") || !strings.Contains(message, "key4") {
+		t.Errorf("Expected: key3 and key4, and got:  %s", message)
 	}
 }
 
