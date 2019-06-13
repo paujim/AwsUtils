@@ -1,7 +1,13 @@
 // Package awsutils provides some helper function for common aws task.
 package awsutils
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/cloudformation"
+	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
+)
 
 func TestFindMissingParametresSuccess(t *testing.T) {
 
@@ -76,4 +82,47 @@ func TestConvertToRequiredCfnParameter(t *testing.T) {
 	if len(cfnParam) != 2 {
 		t.Errorf("Two required parameters expected")
 	}
+}
+
+type mockedClient struct {
+	cloudformationiface.CloudFormationAPI
+	RespValidateTemplateOutput *cloudformation.ValidateTemplateOutput
+}
+
+func (m *mockedClient) ValidateTemplate(in *cloudformation.ValidateTemplateInput) (*cloudformation.ValidateTemplateOutput, error) {
+	// Only need to return mocked response output
+	return m.RespValidateTemplateOutput, nil
+}
+
+func TestGetTeplateParameters(t *testing.T) {
+	// Forgot to define client
+	sError := Stack{
+		Cfn: nil,
+	}
+	_, err := sError.GetTeplateParameters()
+
+	if err.Error() != messageClientNotDefined {
+		t.Errorf("Expected error :%s, and got %s", messageClientNotDefined, err.Error())
+	}
+
+	// Test success call
+	mock := &mockedClient{
+		RespValidateTemplateOutput: &cloudformation.ValidateTemplateOutput{
+			Parameters: []*cloudformation.TemplateParameter{
+				&cloudformation.TemplateParameter{ParameterKey: aws.String("Key1")},
+				&cloudformation.TemplateParameter{ParameterKey: aws.String("Key2")}},
+		},
+	}
+	s := Stack{
+		Cfn: mock,
+	}
+
+	templateParam, err := s.GetTeplateParameters()
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	if len(templateParam) != 2 {
+		t.Errorf("Two parameters expected")
+	}
+
 }
