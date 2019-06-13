@@ -231,7 +231,6 @@ func (s *Stack) CreateStack(parameters map[string]string) error {
 	return s.createStack(cfnParameters)
 }
 func (s *Stack) createStack(parameters []*cloudformation.Parameter) error {
-	log.Println("Creating stack " + s.Name)
 	input := &cloudformation.CreateStackInput{
 		TemplateURL:  aws.String(s.TemplateURL),
 		StackName:    aws.String(s.Name),
@@ -251,8 +250,6 @@ func (s *Stack) createStack(parameters []*cloudformation.Parameter) error {
 		log.Println(err)
 		return err
 	}
-
-	log.Println("Created stack " + s.Name)
 	return nil
 }
 
@@ -276,23 +273,17 @@ func (s *Stack) createChangeSet(parameters []*cloudformation.Parameter) error {
 
 	_, err := s.Cfn.CreateChangeSet(input)
 	if err != nil {
-		fmt.Println("Got error creating change set:")
-		fmt.Println(err.Error())
+		log.Println(err.Error())
 		return err
 	}
-
-	fmt.Println("Waiting")
 
 	// Wait until stack is created
 	desInput := &cloudformation.DescribeStacksInput{StackName: aws.String(s.Name)}
 	err = s.Cfn.WaitUntilStackCreateComplete(desInput)
 	if err != nil {
-		fmt.Println("Got error waiting for createing a stack change")
-		fmt.Println(err)
+		log.Println(err)
 		return err
 	}
-
-	fmt.Println("Created change set " + s.Name)
 	return nil
 }
 
