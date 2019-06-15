@@ -323,15 +323,16 @@ func DownloadBucket(baseDir, bucket, region, excludePatten string) error {
 	return nil
 }
 func saveObject(bucket, baseDir, key string, sess *session.Session, wg *sync.WaitGroup) {
-	downloader := s3manager.NewDownloader(sess)
+	defer wg.Done()
 	fileName := path.Join(baseDir, key)
 	file, err := os.Create(fileName)
-	defer wg.Done()
+
 	if err != nil {
 		log.Println("Unable to open file" + err.Error())
 		return
 	}
 	defer file.Close()
+	downloader := s3manager.NewDownloader(sess)
 	_, err = downloader.Download(file, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
@@ -374,7 +375,7 @@ func UploadBucket(baseDir, bucket, region, excludePatten string) error {
 		}
 
 		wg.Add(1)
-		go uploadObject(bucket, fileName, sess, &wg)
+		go uploadObject(baseDir, bucket, fileName, sess, &wg)
 	}
 	wg.Wait()
 	return nil
@@ -389,14 +390,15 @@ func getFiles(root string) ([]string, error) {
 	})
 	return files, err
 }
-func uploadObject(bucket, key string, sess *session.Session, wg *sync.WaitGroup) {
-	f, err := os.Open(key)
+func uploadObject(baseDir, bucket, fileName string, sess *session.Session, wg *sync.WaitGroup) {
+	defer wg.Done()
+	f, err := os.Open(fileName)
 	if err != nil {
-		log.Printf("failed to open file %q, %v", key, err)
+		log.Printf("failed to open file %q, %v", fileName, err)
 		return
 	}
 	defer f.Close()
-	defer wg.Done()
+	key := toKey(baseDir, fileName)
 	uploader := s3manager.NewUploader(sess)
 	input := s3manager.UploadInput{
 		Bucket: aws.String(bucket),
@@ -408,4 +410,9 @@ func uploadObject(bucket, key string, sess *session.Session, wg *sync.WaitGroup)
 		log.Printf("failed to upload file, %v", err)
 		return
 	}
+}
+func toKey(baseDir, fileName string) string {
+	dir := filepath.ToSlash(fileName)
+	key := dir[len(baseDir+"/"):]
+	return key
 }
