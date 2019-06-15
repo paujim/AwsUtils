@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -330,7 +331,6 @@ func saveObject(bucket, baseDir, key string, sess *session.Session, wg *sync.Wai
 		log.Println("Unable to open file" + err.Error())
 		return
 	}
-
 	defer file.Close()
 	_, err = downloader.Download(file, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
@@ -351,4 +351,61 @@ func mkDirIfNeeded(baseDir string, key string) (err error) {
 		}
 	}
 	return
+}
+
+//Upload
+func UploadBucket(baseDir, bucket, region, excludePatten string) error {
+	var wg sync.WaitGroup
+
+	sess := session.Must(session.NewSession(&aws.Config{
+		Region: aws.String(region),
+	}))
+
+	files, err := getFiles(baseDir)
+	if err != nil {
+		return err
+	}
+
+	for _, fileName := range files {
+
+		matched, err := regexp.Match(excludePatten, []byte(fileName))
+		if err != nil || matched {
+			continue
+		}
+
+		wg.Add(1)
+		go uploadObject(bucket, fileName, sess, &wg)
+	}
+	wg.Wait()
+	return nil
+}
+func getFiles(root string) ([]string, error) {
+	var files []string
+	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if !info.IsDir() {
+			files = append(files, path)
+		}
+		return nil
+	})
+	return files, err
+}
+func uploadObject(bucket, key string, sess *session.Session, wg *sync.WaitGroup) {
+	f, err := os.Open(key)
+	if err != nil {
+		log.Printf("failed to open file %q, %v", key, err)
+		return
+	}
+	defer f.Close()
+	defer wg.Done()
+	uploader := s3manager.NewUploader(sess)
+	input := s3manager.UploadInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+		Body:   f,
+	}
+	_, err = uploader.Upload(&input)
+	if err != nil {
+		log.Printf("failed to upload file, %v", err)
+		return
+	}
 }
