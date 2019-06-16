@@ -355,32 +355,19 @@ func mkDirIfNeeded(baseDir string, key string) (err error) {
 }
 
 //Upload
-func UploadBucket(baseDir, bucket, region, excludePatten string) error {
-	var wg sync.WaitGroup
-
+func UploadBucket(baseDir, bucket, region string) error {
 	sess := session.Must(session.NewSession(&aws.Config{
 		Region: aws.String(region),
 	}))
+	iter := createIterator(baseDir, bucket)
+	uploader := s3manager.NewUploader(sess)
 
-	files, err := getFiles(baseDir)
-	if err != nil {
+	if err := uploader.UploadWithIterator(aws.BackgroundContext(), iter); err != nil {
 		return err
 	}
-
-	for _, fileName := range files {
-
-		matched, err := regexp.Match(excludePatten, []byte(fileName))
-		if err != nil || matched {
-			continue
-		}
-
-		wg.Add(1)
-		go uploadObject(baseDir, bucket, fileName, sess, &wg)
-	}
-	wg.Wait()
 	return nil
 }
-func getFiles(root string) ([]string, error) {
+func getFiles(root string) []string {
 	var files []string
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if !info.IsDir() {
@@ -388,31 +375,70 @@ func getFiles(root string) ([]string, error) {
 		}
 		return nil
 	})
-	return files, err
-}
-func uploadObject(baseDir, bucket, fileName string, sess *session.Session, wg *sync.WaitGroup) {
-	defer wg.Done()
-	f, err := os.Open(fileName)
 	if err != nil {
-		log.Printf("failed to open file %q, %v", fileName, err)
-		return
+		log.Println(err)
 	}
-	defer f.Close()
-	key := toKey(baseDir, fileName)
-	uploader := s3manager.NewUploader(sess)
-	input := s3manager.UploadInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
-		Body:   f,
-	}
-	_, err = uploader.Upload(&input)
-	if err != nil {
-		log.Printf("failed to upload file, %v", err)
-		return
-	}
+	return files
 }
 func toKey(baseDir, fileName string) string {
 	dir := filepath.ToSlash(fileName)
 	key := dir[len(baseDir+"/"):]
 	return key
+}
+
+type directoryIterator struct {
+	filePaths []string
+	bucket    string
+	baseDir   string
+	next      struct {
+		path string
+		key  string
+		f    *os.File
+	}
+	err error
+}
+
+func createIterator(baseDir, bucket string) s3manager.BatchUploadIterator {
+	paths := getFiles(baseDir)
+	return &directoryIterator{
+		filePaths: paths,
+		bucket:    bucket,
+		baseDir:   baseDir,
+	}
+}
+
+func (iter *directoryIterator) Next() bool {
+	if len(iter.filePaths) == 0 {
+		iter.next.f = nil
+		return false
+	}
+
+	f, err := os.Open(iter.filePaths[0])
+	iter.err = err
+
+	// Iterate next
+	iter.next.f = f
+	iter.next.path = iter.filePaths[0]
+	iter.next.key = toKey(iter.baseDir, iter.filePaths[0])
+
+	iter.filePaths = iter.filePaths[1:]
+	return true && iter.Err() == nil
+}
+
+func (iter *directoryIterator) Err() error {
+	return iter.err
+}
+
+func (iter *directoryIterator) UploadObject() s3manager.BatchUploadObject {
+	f := iter.next.f
+	return s3manager.BatchUploadObject{
+		Object: &s3manager.UploadInput{
+			Bucket: &iter.bucket,
+			Key:    &iter.next.key,
+			Body:   f,
+		},
+		After: func() error {
+			return f.Close()
+		},
+	}
 }
