@@ -2,6 +2,7 @@
 package awsutils
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -19,7 +20,11 @@ func (s *mockedS3Client) ListObjectsV2(*s3.ListObjectsV2Input) (*s3.ListObjectsV
 	return &s3.ListObjectsV2Output{Contents: contents}, nil
 }
 
-func TestDownloadEmptyBucket(t *testing.T) {
+func (s *mockedS3Client) GetObject(*s3.GetObjectInput) (*s3.GetObjectOutput, error) {
+	return nil, errors.New("bad stuff! Try next file")
+}
+
+func TestDownloadBucket(t *testing.T) {
 
 	b := Bucket{}
 	err := b.DownloadBucket(nil)

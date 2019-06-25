@@ -39,6 +39,11 @@ func (b *Bucket) DownloadBucket(excludePatten *string) error {
 		return fmt.Errorf(messageClientNotDefined)
 	}
 
+	//create local directory
+	if err := os.MkdirAll(b.LocalDir, os.ModePerm); err != nil {
+		return err
+	}
+
 	input := &s3.ListObjectsV2Input{
 		Bucket: aws.String(b.Name),
 	}
