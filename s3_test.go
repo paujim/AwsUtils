@@ -19,14 +19,15 @@ func (s *mockedS3Client) ListObjectsV2(*s3.ListObjectsV2Input) (*s3.ListObjectsV
 
 func TestDownloadEmptyBucket(t *testing.T) {
 
-	err := DownloadBucket(nil, "", "", nil)
+	b := Bucket{}
+	err := b.DownloadBucket(nil)
 
 	if err.Error() != messageClientNotDefined {
 		t.Errorf("Expected error :%s, and got %s", messageClientNotDefined, err.Error())
 	}
+	b = NewBucket(&mockedS3Client{}, "Dir", "Bucket")
 
-	mock := &mockedS3Client{}
-	err = DownloadBucket(mock, "Dir", "Bucket", nil)
+	err = b.DownloadBucket(nil)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
