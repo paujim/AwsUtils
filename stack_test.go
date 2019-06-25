@@ -111,9 +111,7 @@ func TestConvertToRequiredCfnParameter(t *testing.T) {
 
 func TestGetTeplateParameters(t *testing.T) {
 	// Forgot to define client
-	sError := Stack{
-		Cfn: nil,
-	}
+	sError := Stack{}
 	_, err := sError.GetTeplateParameters()
 
 	if err.Error() != messageClientNotDefined {
@@ -128,10 +126,7 @@ func TestGetTeplateParameters(t *testing.T) {
 				&cloudformation.TemplateParameter{ParameterKey: aws.String("key2")}},
 		},
 	}
-	s := Stack{
-		Cfn: mock,
-	}
-
+	s := NewStack(mock, "name", "url", []string{})
 	templateParam, err := s.GetTeplateParameters()
 	if err != nil {
 		t.Errorf(err.Error())
@@ -148,7 +143,7 @@ func TestCreateStack(t *testing.T) {
 
 	// Forgot to define client
 	sError := Stack{
-		Cfn: nil,
+		cfn: nil,
 	}
 	err := sError.CreateStack(parameters)
 
@@ -164,10 +159,7 @@ func TestCreateStack(t *testing.T) {
 				&cloudformation.TemplateParameter{ParameterKey: aws.String("key2")}},
 		},
 	}
-	s := Stack{
-		Cfn: mock,
-	}
-
+	s := NewStack(mock, "name", "url", []string{})
 	err = s.CreateStack(parameters)
 	if err != nil {
 		t.Errorf(err.Error())
@@ -179,7 +171,7 @@ func TestCreateChangeSet(t *testing.T) {
 	parameters := generateParamers(4)
 	// Forgot to define client
 	sError := Stack{
-		Cfn: nil,
+		cfn: nil,
 	}
 	err := sError.CreateChangeSet(parameters)
 
@@ -195,10 +187,7 @@ func TestCreateChangeSet(t *testing.T) {
 				&cloudformation.TemplateParameter{ParameterKey: aws.String("key2")}},
 		},
 	}
-	s := Stack{
-		Cfn: mock,
-	}
-
+	s := NewStack(mock, "name", "url", []string{})
 	err = s.CreateChangeSet(parameters)
 	if err != nil {
 		t.Errorf(err.Error())
@@ -209,9 +198,7 @@ func TestCreateChangeSet(t *testing.T) {
 func TestCreateOrUpdate(t *testing.T) {
 	parameters := generateParamers(4)
 	// Forgot to define client
-	sError := Stack{
-		Cfn: nil,
-	}
+	sError := Stack{}
 	err := sError.CreateOrUpdate(parameters)
 
 	if err.Error() != messageClientNotDefined {
@@ -226,10 +213,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				&cloudformation.TemplateParameter{ParameterKey: aws.String("key2")}},
 		},
 	}
-	s := Stack{
-		Cfn: mock,
-	}
-
+	s := NewStack(mock, "name", "url", []string{})
 	err = s.CreateOrUpdate(parameters)
 	if err != nil {
 		t.Errorf(err.Error())

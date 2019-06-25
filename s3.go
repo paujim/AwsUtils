@@ -39,6 +39,11 @@ func (b *Bucket) DownloadBucket(excludePatten *string) error {
 		return fmt.Errorf(messageClientNotDefined)
 	}
 
+	//create local directory
+	if err := os.MkdirAll(b.LocalDir, os.ModePerm); err != nil {
+		return err
+	}
+
 	input := &s3.ListObjectsV2Input{
 		Bucket: aws.String(b.Name),
 	}
@@ -143,6 +148,9 @@ func saveObjectFromS3(bucket, baseDir, fileName string, s3Client s3iface.S3API, 
 func getFiles(root string) []string {
 	var files []string
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
 		if !info.IsDir() {
 			files = append(files, path)
 		}
