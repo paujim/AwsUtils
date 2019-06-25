@@ -8,11 +8,11 @@ import (
 	"github.com/aws/aws-sdk-go/service/ssm/ssmiface"
 )
 
-type store struct {
+type Store struct {
 	client ssmiface.SSMAPI
 }
 
-func (s *store) GetParameter(keyname string) (*string, error) {
+func (s *Store) GetParameter(keyname string) (*string, error) {
 	if s == nil {
 		return nil, errors.New(messageClientNotDefined)
 	}
@@ -29,7 +29,7 @@ func (s *store) GetParameter(keyname string) (*string, error) {
 	return param.Parameter.Value, nil
 }
 
-func (s *store) PutParameter(keyname, value string) error {
+func (s *Store) PutParameter(keyname, value string) error {
 	if s == nil {
 		return nil
 	}
