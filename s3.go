@@ -21,19 +21,29 @@ const (
 	messageClientNotDefined = "Aws Client not defined"
 )
 
+type Bucket struct {
+	s3Client s3iface.S3API
+	Name     string
+	LocalDir string
+}
+
+func NewBucket(client s3iface.S3API, name, localDir string) Bucket {
+	return Bucket{s3Client: client, Name: name, LocalDir: localDir}
+}
+
 //DownloadBucket ...
-func DownloadBucket(s3Client s3iface.S3API, baseDir, bucket string, excludePatten *string) error {
+func (b *Bucket) DownloadBucket(excludePatten *string) error {
 	var wg sync.WaitGroup
 
-	if s3Client == nil {
+	if b.s3Client == nil {
 		return fmt.Errorf(messageClientNotDefined)
 	}
 
 	input := &s3.ListObjectsV2Input{
-		Bucket: aws.String(bucket),
+		Bucket: aws.String(b.Name),
 	}
 
-	result, err := s3Client.ListObjectsV2(input)
+	result, err := b.s3Client.ListObjectsV2(input)
 	if err != nil {
 		return err
 	}
@@ -47,7 +57,7 @@ func DownloadBucket(s3Client s3iface.S3API, baseDir, bucket string, excludePatte
 		}
 
 		wg.Add(1)
-		go saveObjectToS3(bucket, baseDir, *s3Obj.Key, s3Client, &wg)
+		go saveObjectToS3(b.Name, b.LocalDir, *s3Obj.Key, b.s3Client, &wg)
 	}
 	wg.Wait()
 	return nil
@@ -99,16 +109,16 @@ func mkDirIfNeeded(baseDir string, key string) (err error) {
 }
 
 //UploadBucket ...
-func UploadBucket(s3Client s3iface.S3API, baseDir, bucket string) error {
+func (b *Bucket) UploadBucket() error {
 	var wg sync.WaitGroup
 
-	if s3Client == nil {
+	if b.s3Client == nil {
 		return fmt.Errorf(messageClientNotDefined)
 	}
 
-	for _, file := range getFiles(baseDir) {
+	for _, file := range getFiles(b.LocalDir) {
 		wg.Add(1)
-		go saveObjectFromS3(bucket, baseDir, file, s3Client, &wg)
+		go saveObjectFromS3(b.Name, b.LocalDir, file, b.s3Client, &wg)
 	}
 	wg.Wait()
 	return nil

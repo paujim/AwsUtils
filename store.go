@@ -9,11 +9,15 @@ import (
 )
 
 type Store struct {
-	client ssmiface.SSMAPI
+	ssmClient ssmiface.SSMAPI
+}
+
+func NewStore(client ssmiface.SSMAPI) Store {
+	return Store{ssmClient: client}
 }
 
 func (s *Store) GetParameter(keyname string) (*string, error) {
-	if s == nil {
+	if s.ssmClient == nil {
 		return nil, errors.New(messageClientNotDefined)
 	}
 
@@ -22,7 +26,7 @@ func (s *Store) GetParameter(keyname string) (*string, error) {
 		Name:           &keyname,
 		WithDecryption: &withDecryption,
 	}
-	param, err := s.client.GetParameter(input)
+	param, err := s.ssmClient.GetParameter(input)
 	if err != nil {
 		return nil, err
 	}
@@ -38,6 +42,6 @@ func (s *Store) PutParameter(keyname, value string) error {
 		Value: aws.String(value),
 		Type:  aws.String(ssm.ParameterTypeSecureString),
 	}
-	_, err := s.client.PutParameter(input)
+	_, err := s.ssmClient.PutParameter(input)
 	return err
 }
