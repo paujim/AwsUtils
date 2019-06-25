@@ -143,6 +143,9 @@ func saveObjectFromS3(bucket, baseDir, fileName string, s3Client s3iface.S3API, 
 func getFiles(root string) []string {
 	var files []string
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
 		if !info.IsDir() {
 			files = append(files, path)
 		}

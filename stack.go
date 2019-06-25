@@ -16,24 +16,28 @@ import (
 
 //Stack ... Aws Cloud formation stack
 type Stack struct {
-	Cfn          cloudformationiface.CloudFormationAPI
+	cfn          cloudformationiface.CloudFormationAPI
 	Name         string
 	TemplateURL  string
 	Capabilities []string
 	Status       *string
 }
 
-func (s *Stack) InitilizeCfn(region string) {
-	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(region),
-	}))
-	s.Cfn = cloudformation.New(sess)
+func NewStack(client cloudformationiface.CloudFormationAPI, name, templateURL string, capabilities []string) Stack {
+	return Stack{cfn: client, Name: name, TemplateURL: templateURL, Capabilities: capabilities}
 }
+
+// func (s *Stack) InitilizeCfn(region string) {
+// 	sess := session.Must(session.NewSession(&aws.Config{
+// 		Region: aws.String(region),
+// 	}))
+// 	s.cfn = cloudformation.New(sess)
+// }
 
 //CreateOrUpdate ... creates a stack or creates a change set for an existing stack based on given parameters
 func (s *Stack) CreateOrUpdate(parameters map[string]string) error {
 
-	if s.Cfn == nil {
+	if s.cfn == nil {
 		return fmt.Errorf(messageClientNotDefined)
 	}
 
@@ -50,7 +54,7 @@ func (s *Stack) CreateOrUpdate(parameters map[string]string) error {
 
 	cfnParameters := convertToRequiredCfnParameter(templateParam, parameters)
 	input := cloudformation.DescribeStacksInput{StackName: &s.Name}
-	_, err = s.Cfn.DescribeStacks(&input)
+	_, err = s.cfn.DescribeStacks(&input)
 
 	if err != nil {
 		err = s.createStack(cfnParameters)
@@ -98,13 +102,13 @@ func convertToRequiredCfnParameter(templateParam map[string]*string, parameters 
 
 //ReadOutputs ...
 func (s *Stack) ReadOutputs() (map[string]string, error) {
-	if s.Cfn == nil {
+	if s.cfn == nil {
 		return nil, fmt.Errorf(messageClientNotDefined)
 	}
 	parameters := make(map[string]string)
 	input := cloudformation.DescribeStacksInput{StackName: &s.Name}
 
-	res, err := s.Cfn.DescribeStacks(&input)
+	res, err := s.cfn.DescribeStacks(&input)
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +199,7 @@ func GetAllStacksBy(region string) ([]Stack, error) {
 
 //GetTeplateParameters ...
 func (s *Stack) GetTeplateParameters() (map[string]*string, error) {
-	if s.Cfn == nil {
+	if s.cfn == nil {
 		return nil, fmt.Errorf(messageClientNotDefined)
 	}
 	return s.getTeplateParameters()
@@ -203,7 +207,7 @@ func (s *Stack) GetTeplateParameters() (map[string]*string, error) {
 func (s *Stack) getTeplateParameters() (map[string]*string, error) {
 
 	input := &cloudformation.ValidateTemplateInput{TemplateURL: &s.TemplateURL}
-	resp, err := s.Cfn.ValidateTemplate(input)
+	resp, err := s.cfn.ValidateTemplate(input)
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +220,7 @@ func (s *Stack) getTeplateParameters() (map[string]*string, error) {
 
 //CreateStack ...
 func (s *Stack) CreateStack(parameters map[string]string) error {
-	if s.Cfn == nil {
+	if s.cfn == nil {
 		return fmt.Errorf(messageClientNotDefined)
 	}
 	cfnParameters := convertToCfnParameter(parameters)
@@ -229,7 +233,7 @@ func (s *Stack) createStack(parameters []*cloudformation.Parameter) error {
 		Capabilities: aws.StringSlice(s.Capabilities),
 		Parameters:   parameters}
 
-	_, err := s.Cfn.CreateStack(input)
+	_, err := s.cfn.CreateStack(input)
 	if err != nil {
 		log.Println(err.Error())
 		return err
@@ -237,7 +241,7 @@ func (s *Stack) createStack(parameters []*cloudformation.Parameter) error {
 
 	// Wait until stack is created
 	desInput := &cloudformation.DescribeStacksInput{StackName: aws.String(s.Name)}
-	err = s.Cfn.WaitUntilStackCreateComplete(desInput)
+	err = s.cfn.WaitUntilStackCreateComplete(desInput)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -247,7 +251,7 @@ func (s *Stack) createStack(parameters []*cloudformation.Parameter) error {
 
 //CreateChangeSet ...
 func (s *Stack) CreateChangeSet(parameters map[string]string) error {
-	if s.Cfn == nil {
+	if s.cfn == nil {
 		return fmt.Errorf(messageClientNotDefined)
 	}
 	cfnParameters := convertToCfnParameter(parameters)
@@ -263,7 +267,7 @@ func (s *Stack) createChangeSet(parameters []*cloudformation.Parameter) error {
 		ChangeSetName: aws.String(changeSetName),
 		Parameters:    parameters}
 
-	_, err := s.Cfn.CreateChangeSet(input)
+	_, err := s.cfn.CreateChangeSet(input)
 	if err != nil {
 		log.Println(err.Error())
 		return err
@@ -271,7 +275,7 @@ func (s *Stack) createChangeSet(parameters []*cloudformation.Parameter) error {
 
 	// Wait until stack is created
 	desInput := &cloudformation.DescribeStacksInput{StackName: aws.String(s.Name)}
-	err = s.Cfn.WaitUntilStackCreateComplete(desInput)
+	err = s.cfn.WaitUntilStackCreateComplete(desInput)
 	if err != nil {
 		log.Println(err)
 		return err
