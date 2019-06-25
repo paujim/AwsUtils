@@ -14,10 +14,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
 )
 
-const (
-	messageClientNotDefined = "Aws Client not defined"
-)
-
 //Stack ... Aws Cloud formation stack
 type Stack struct {
 	Cfn          cloudformationiface.CloudFormationAPI
