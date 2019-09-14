@@ -62,12 +62,12 @@ func (b *Bucket) DownloadBucket(excludePatten *string) error {
 		}
 
 		wg.Add(1)
-		go saveObjectToS3(b.Name, b.LocalDir, *s3Obj.Key, b.s3Client, &wg)
+		go getFromS3(b.Name, b.LocalDir, *s3Obj.Key, b.s3Client, &wg)
 	}
 	wg.Wait()
 	return nil
 }
-func saveObjectToS3(bucket, baseDir, key string, s3Client s3iface.S3API, wg *sync.WaitGroup) {
+func getFromS3(bucket, baseDir, key string, s3Client s3iface.S3API, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	if err := mkDirIfNeeded(baseDir, key); err != nil {
@@ -123,20 +123,26 @@ func (b *Bucket) UploadBucket() error {
 
 	for _, file := range getFiles(b.LocalDir) {
 		wg.Add(1)
-		go saveObjectFromS3(b.Name, b.LocalDir, file, b.s3Client, &wg)
+		go putToS3(b.Name, b.LocalDir, file, b.s3Client, &wg)
 	}
 	wg.Wait()
 	return nil
 }
-func saveObjectFromS3(bucket, baseDir, fileName string, s3Client s3iface.S3API, wg *sync.WaitGroup) {
+func putToS3(bucket, baseDir, fileName string, s3Client s3iface.S3API, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	key := toKey(baseDir, fileName)
+	f, err := os.Open(fileName)
+	if err != nil {
+		log.Println("Unable to open file: " + err.Error())
+		return
+	}
+	defer f.Close()
 
 	input := &s3.PutObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
-		Body:   aws.ReadSeekCloser(strings.NewReader(fileName)),
+		Body:   aws.ReadSeekCloser(f),
 	}
 	if _, err := s3Client.PutObject(input); err != nil {
 		log.Println("Unable to upload file: " + err.Error())
